@@ -1,62 +1,79 @@
 <template>
-    <header>
-      <input @keydown="filterGood(value)" v-model="value" class="input" />
-      <button @click="filterGood(value)" class="input-button" type="button">Найти</button>
-      <button class="cart-button">Корзина</button>
-    </header>
-    <main>
-      <div class="goods-list">
-      <div class="goods-item" v-for="item in items" :key="item.product_name">
-      <h3>{{item.product_name}}</h3>
-      <p>{{item.price}}</p>
-      <button @click="addGood(item)" class="add-cart">Добавить в корзину</button>
-      </div>
-      </div>
-      <hr />
-      <div v-if="isVisibleCart" class="cart-list">Корзина</div>
-      <div v-if="isVisibleCart" class="goods-list" >
-      <div class="goods-item" v-for="item in filterItems" :key="item.product_name">
-      <h3>{{item.product_name}}</h3>
-      <p>{{item.price}}</p>
-      </div>
-    </div>
-    </main>
+  <Header @toggleCart="toggleCartStatus" @filter-good="filterGood" />
+  <GoodsList @add-to-cart="addToCart" :items="filterItems" />
+  <Cart :cartGood="cartGoods" :isVisible="isVisibleCart" />
 </template>
 
 <script>
-const API_LINK = 'https://raw.githubusercontent.com/GeekBrainsTutorial/online-store-api/master/responses'
+import Header from "./components/Header";
+import GoodsList from "./components/GoodsList";
+import Cart from "./components/Cart";
+
+const API_LINK = "http://localhost:8082/";
 
 export default {
-  name: 'App',
+  name: "App",
   components: {
+    Header,
+    GoodsList,
+    Cart,
   },
   data: () => ({
     items: [],
     filterItems: [],
-    value: '',
+    cartGoods: [],
     isVisibleCart: false,
   }),
+  mounted() {
+    this.fetchGoods(`${API_LINK}catalog.json`);
+    this.getCart();
+  },
   methods: {
-    async fetchGoods() {
-    const response = await fetch(`${API_LINK}/catalogData.json`);
-    const commit = await response.json();
-    this.items = commit;
+    async fetchGoods(url) {
+      const response = await fetch(url);
+      if (response.ok) {
+        const commit = await response.json();
+        this.items = commit;
+        this.filterItems = commit;
+      } else {
+        console.log(response.status);
+      }
+    },
+    addToCart(item) {
+      this.makePOSTRequest(item, `${API_LINK}cart.json`).then(() =>
+        this.getCart()
+      );
+    },
+    makePOSTRequest(data, url) {
+      fetch(url, {
+        method: "POST", // или 'PUT'
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      }).then((data) => data.json());
+    },
+    async getCart() {
+      const response = await fetch(`${API_LINK}cart.json`);
+      if (response.ok) {
+        const commit = await response.json();
+        this.cartGoods = commit;
+      } else {
+        console.log(response.status);
+      }
     },
     filterGood(value) {
-    const regex = new RegExp(value, 'i');
-    this.items = this.items.filter(item => regex.test(item.product_name));
-  },
-    addGood(good) {
-    this.filterItems.push(good);
-    this.isVisibleCart = true;
-    return this.filterItems;
-  }
+      const regex = new RegExp(value, "i");
+      this.filterItems = this.items.filter((item) =>
+        regex.test(item.product_name)
+      );
     },
-  mounted() {
-    this.fetchGoods()
+
+    toggleCartStatus() {
+      this.isVisibleCart = !this.isVisibleCart;
+    },
   },
-  watch: {},
-}
+};
 </script>
 
 <style>
@@ -66,62 +83,17 @@ export default {
   -moz-osx-font-smoothing: grayscale;
   color: #2c3e50;
 }
-header {
-  width: 100%;
-  height: 6rem;
-  border: 1px solid;
-}
-.input{
-  margin: 30px;
-  width: 120px;
-  height: 30px;
-}
-.input-button {
-  margin: 2%;
-  width: 5rem;
-  height: 40%;
-  float: left;
-  border: 1px solid;
-  border-radius: 15%;
-}
-.add-cart{
+
+.add-cart {
   position: relative;
   left: 35%;
   width: 5rem;
   height: 15%;
   border: 1px solid;
 }
-.cart-button{
-  margin: 2%;
-  width: 5rem;
-  height: 40%;
-  float: right;
-  border: 1px solid;
-  border-radius: 15%;
-}
+
 main {
   height: 93%;
   margin-top: 70px;
-}
-.goods-list{
-  display: flex;
-  justify-content: space-around;
-  flex-wrap: wrap;
-}
-
-.goods-item{
-  border: 1px solid;
-  width: 20%;
-  height: 250px;
-}
-
-.goods-item h3{
-  margin-top: 120px;
-  text-align: center;
-}
-
-.goods-item p{
-  margin-top: 10px;
-  text-align: center;
 }
 </style>
